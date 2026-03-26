@@ -1,5 +1,11 @@
 # Fedora 43 Hibernate Setup
 
+![Fedora](https://img.shields.io/badge/Fedora-43-294172?style=flat&logo=fedora&logoColor=white)
+![GNOME](https://img.shields.io/badge/GNOME-45--50-4A86CF?style=flat&logo=gnome&logoColor=white)
+![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat)
+![Maintained](https://img.shields.io/badge/Maintained-yes-brightgreen?style=flat)
+
 A one-script solution to enable hibernation on Fedora 43 with GNOME, including
 a custom extension that adds a "Hibernate..." button to the Quick Settings panel.
 
