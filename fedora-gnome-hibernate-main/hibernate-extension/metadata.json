@@ -1,0 +1,6 @@
+{
+  "name": "Fedora Hibernate",
+  "description": "Native Hibernate button for GNOME Quick Settings.",
+  "uuid": "hibernate@the-hill-tanners.fedora",
+  "shell-version": ["45", "46", "47", "48", "49", "50"]
+}
