@@ -1,73 +1,197 @@
-# Fedora 43 GNOME Hibernate Master Setup
+# Fedora 43 Hibernate Setup
 
-A comprehensive, all-in-one automation script to enable native hibernation on Fedora 43 (GNOME 49+) and inject a "Hibernate..." button directly into the Quick Settings menu.
-
-## 🚀 The Problem
-By default, Fedora uses **ZRAM**, which is great for performance but makes hibernation impossible because there is no persistent storage for the RAM image. Additionally, GNOME 49+ does not expose a "Hibernate" option in the UI, and its "Automatic Suspend" feature doesn't naturally support hibernating to disk.
-
-## ✨ The Solution
-This repository provides a master script that automates the complex system-level changes required for Fedora:
-* ✅ **Disables ZRAM:** Removes `zram-generator` to prevent conflicts.
-* ✅ **Enables Physical Swap:** Configures your persistent swap partition in `/etc/fstab`.
-* ✅ **Kernel Resume:** Uses `grubby` to set the `resume=UUID=...` flag for the bootloader.
-* ✅ **Initramfs Update:** Automatically rebuilds the `dracut` images with the `resume` module.
-* ✅ **Systemd Redirection:** Symlinks `systemd-suspend` to `systemd-hibernate`, so **any** sleep call (Lid close, Idle timer) triggers a safe hibernate.
-* ✅ **UI Extension:** Installs a custom GNOME Extension to put a "Hibernate..." button in the Power submenu.
+A one-script solution to enable hibernation on Fedora 43 with GNOME, including
+a custom extension that adds a "Hibernate..." button to the Quick Settings panel.
 
 ---
 
-## 📋 Prerequisites
-1. **Physical Swap Partition:** You **must** have a dedicated swap partition (not a swapfile) that is at least the size of your RAM (e.g., if you have 16GB RAM, you need a 17GB+ Swap partition).
-2. **Secure Boot:** Must be **Disabled** in your BIOS/UEFI. The Linux kernel lockdown prevents hibernation when Secure Boot is active.
-3. **Swap UUID:** You will need your swap partition's UUID. Run `lsblk -f` to find it.
+## What this does
+
+Out of the box, Fedora doesn't support hibernation. There are two reasons for this:
+
+**1. Fedora uses ZRAM by default.**
+ZRAM is a compressed chunk of your existing RAM used as virtual swap — it's fast,
+but it vanishes when the machine loses power. Hibernation works by writing
+everything in RAM to a physical storage device so the session can be restored after
+a full power-off. ZRAM can't do that.
+
+**2. GNOME doesn't show a Hibernate button.**
+Even once the system supports hibernation, there's no UI option in GNOME 45+.
+This repo fixes that too.
+
+The setup script handles all of the following automatically:
+
+- Removes ZRAM and enables your physical swap partition instead
+- Tells the kernel where to find the swap partition at boot (the `resume` flag)
+- Rebuilds the boot image (initramfs) to include the resume module
+- Redirects system sleep calls so that idle timers and lid-close events trigger
+  hibernate rather than suspend
+- Installs a GNOME extension that adds a "Hibernate..." button to the Power
+  submenu in Quick Settings
 
 ---
 
-## 🛠️ Installation
+## Before you start
 
-### 1. Configure the Script
-Open `setup-fedora-hibernate.sh` and update the top two variables:
+You need three things in place before running the script.
+
+### 1. A dedicated swap partition
+
+This is different from a swapfile. You need a real partition — at least as large
+as your total RAM — formatted as swap. If your machine has 16 GB of RAM, you
+need a swap partition of at least 17 GB.
+
+To check whether you have one, open a terminal and run:
+
+```bash
+lsblk -f
+```
+
+Look for a partition with `FSTYPE` listed as `swap`. If you don't have one, you'll
+need to create it before continuing. GParted is a straightforward tool for this if
+you have unallocated space available.
+
+### 2. Your swap partition's UUID
+
+Once you've confirmed the swap partition exists, note its UUID from the `lsblk -f`
+output — it's the long string in the `UUID` column next to your swap partition.
+You'll need it in the next step.
+
+### 3. Secure Boot must be disabled
+
+The Linux kernel's security lockdown mode — which is active when Secure Boot is
+enabled — blocks hibernation. You'll need to disable Secure Boot in your BIOS/UEFI
+settings. The exact steps vary by manufacturer, but the option is usually found
+under a "Security" or "Boot" tab. Restart into your BIOS by pressing the relevant
+key during startup (commonly F2, F12, or Del, depending on your machine).
+
+---
+
+## Installation
+
+### Step 1: Edit the script
+
+Open `setup-fedora-hibernate.sh` in a text editor and update the two lines near
+the top:
+
 ```bash
 SWAP_UUID="your-uuid-here"
 SWAP_PARTITION="/dev/your-device-here"
 ```
 
-### 2. Run the Setup
+Replace `your-uuid-here` with the UUID you found above, and `your-device-here`
+with the device path of your swap partition (for example `/dev/nvme0n1p2` or
+`/dev/sda2`).
+
+### Step 2: Run the script
+
+From the repository root directory, run:
+
 ```bash
 sudo ./setup-fedora-hibernate.sh
 ```
 
-### 3. Reboot
-A full system reboot is required to load the new kernel parameters and rebuild the initramfs.
+The script will work through each step and report what it's doing. If anything
+goes wrong, it will tell you rather than silently continuing.
+
+### Step 3: Reboot
+
+A full reboot is required. The new kernel parameters won't take effect until the
+machine restarts.
 
 ---
 
-## ⏱️ How to use "Automatic Hibernate"
-Because this script symlinks the system sleep calls, you don't need a special menu for idle timers. 
-1. Open GNOME **Settings** -> **Power**.
-2. Go to **Automatic Suspend**.
-3. Set your desired idle time. 
-**When the timer hits zero, the machine will now Hibernate instead of Suspend.**
+## Enabling the GNOME extension
 
----
-
-## 🔧 Enabling the UI Button
 After rebooting and logging back in:
-1. Open the **Extensions** app (or `gnome-extensions-app`).
-2. Locate **Fedora Hibernate** and toggle it **ON**.
-3. Your "Hibernate..." button will now appear in the Quick Settings (top right) under the Power section.
+
+1. Open the **Extensions** app. You can search for it in the Activities overview,
+   or install it first with `sudo dnf install gnome-extensions-app` if it's not
+   already there.
+2. Find **Fedora Hibernate** in the list and toggle it on.
+3. Click the power icon in the top-right corner of the screen. Under the Power
+   section, you'll now see a **"Hibernate..."** option.
 
 ---
 
-## 🧪 Testing & Verification
-To verify the kernel sees your resume partition:
+## Setting up automatic hibernate
+
+Because the script redirects sleep calls at the system level, you don't need any
+special configuration for idle-based hibernation:
+
+1. Open **Settings** → **Power**.
+2. Under **Automatic Suspend**, set your preferred idle timer.
+
+When that timer expires, the machine will hibernate rather than suspend.
+
+---
+
+## Checking it's working
+
+After rebooting, confirm the kernel has picked up your resume partition:
+
 ```bash
 cat /proc/cmdline | grep resume
 ```
-To test a manual hibernation:
+
+You should see `resume=UUID=...` in the output with your swap partition's UUID.
+
+To test hibernation manually:
+
 ```bash
 sudo systemctl hibernate
 ```
 
-## ⚖️ License
-Distributed under the MIT License. Created by John Hill-Tanner.
+The machine should power off completely, then restore your session when you turn
+it back on.
+
+---
+
+## Troubleshooting
+
+**The machine suspends instead of hibernating**
+
+Check the `systemd-suspend.service` symlink was created correctly:
+
+```bash
+ls -la /etc/systemd/system/systemd-suspend.service
+```
+
+It should point to `/usr/lib/systemd/system/systemd-hibernate.service`. If not,
+re-run the setup script.
+
+**The session doesn't restore after hibernating**
+
+This usually means the kernel couldn't find the resume partition at boot. Run:
+
+```bash
+cat /proc/cmdline | grep resume
+```
+
+Confirm the UUID matches your swap partition exactly. If it's missing, re-run the
+setup script and reboot again.
+
+**The Hibernate button doesn't appear in GNOME**
+
+Make sure the extension is enabled in the Extensions app. If it doesn't appear in
+the list at all, check the extension files are in place:
+
+```bash
+ls ~/.local/share/gnome-shell/extensions/hibernate@the-hill-tanners.fedora/
+```
+
+You should see `extension.js` and `metadata.json`. If the directory is empty or
+missing, run the setup script again from the repository root directory.
+
+If the files are there but the button still doesn't appear, check GNOME's log for
+extension errors:
+
+```bash
+journalctl /usr/bin/gnome-shell -b | grep FedoraHibernate
+```
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
