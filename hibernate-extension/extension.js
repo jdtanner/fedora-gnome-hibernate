@@ -9,43 +9,15 @@ export default class FedoraHibernateExtension extends Extension {
         this._hibernateItem.connect('activate', () => {
             GLib.spawn_command_line_async('systemctl hibernate');
         });
-
-        let shutdownItem = null;
         const systemGroup = Main.panel.statusArea.quickSettings._system;
-        if (systemGroup) {
-            const container = (systemGroup._systemItem && systemGroup._systemItem.child) 
-                              ? systemGroup._systemItem.child 
-                              : systemGroup.child;
-
-            if (container && typeof container.get_children === 'function') {
-                for (const child of container.get_children()) {
-                    if (child.constructor.name === 'ShutdownItem') {
-                        shutdownItem = child;
-                        break;
-                    }
-                }
-            }
+        const container = (systemGroup._systemItem && systemGroup._systemItem.child) ? systemGroup._systemItem.child : systemGroup.child;
+        let shutdownItem = null;
+        for (const child of container.get_children()) {
+            if (child.constructor.name === 'ShutdownItem') { shutdownItem = child; break; }
         }
-
         if (shutdownItem && shutdownItem.menu) {
-            let insertIndex = 2; 
-            let items = shutdownItem.menu._getMenuItems();
-            for (let i = 0; i < items.length; i++) {
-                if (items[i] instanceof PopupMenu.PopupSeparatorMenuItem) {
-                    insertIndex = i;
-                    break;
-                }
-            }
-            shutdownItem.menu.addMenuItem(this._hibernateItem, insertIndex);
-        } else {
-            Main.panel.statusArea.quickSettings.menu.addMenuItem(this._hibernateItem);
+            shutdownItem.menu.addMenuItem(this._hibernateItem, 2);
         }
     }
-
-    disable() {
-        if (this._hibernateItem) {
-            this._hibernateItem.destroy();
-            this._hibernateItem = null;
-        }
-    }
+    disable() { if (this._hibernateItem) this._hibernateItem.destroy(); }
 }

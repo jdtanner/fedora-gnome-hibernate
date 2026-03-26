@@ -1,7 +1,6 @@
 {
   "name": "Fedora Hibernate",
-  "description": "Injects a native Hibernate button directly into the GNOME Quick Settings Power Submenu.",
+  "description": "Native Hibernate button for GNOME Quick Settings.",
   "uuid": "hibernate@the-hill-tanners.fedora",
-  "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "url": "https://github.com/jdtanner/fedora-gnome-hibernate"
+  "shell-version": ["45", "46", "47", "48", "49", "50"]
 }
